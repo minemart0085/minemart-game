@@ -1,0 +1,6 @@
+{
+  "name": "MINEMART Photo Puzzle",
+  "description": "A professional, modern mobile-first photo sliding puzzle game with winding level map, boosters, rewards, daily streak, and achievements.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
