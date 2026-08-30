@@ -78,7 +78,7 @@ export interface BoosterCost {
 }
 
 export interface PuzzleTile {
-  id: number; // 0 to 14 for photo tiles, 15 for empty
+  id: number; 
   originalRow: number;
   originalCol: number;
   currentRow: number;
