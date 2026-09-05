@@ -1,56 +1,88 @@
 export interface TileState {
-  id: number; // 0..14 original tile index, 15 is blank
-  currentPos: number; // 0..15 index on board
+  id: number;
+  currentPos: number;
 }
 
+// Level-based Grid Size System:
+// - Level 1 to 15  -> 3 × 3 grid (8 image tiles + 1 blank)
+// - Level 16 to 30 -> 4 × 4 grid (15 image tiles + 1 blank)
+// - Level 31 to 50 -> 5 × 5 grid (24 image tiles + 1 blank)
+export const getGridSizeForLevel = (levelId: number): number => {
+  if (levelId <= 15) return 3;
+  if (levelId <= 30) return 4;
+  return 5;
+};
+
+export const getTotalTiles = (gridSize: number): number => gridSize * gridSize;
+
+export const getBlankTileId = (gridSize: number): number => gridSize * gridSize - 1;
+
+export const getGridDimension = (grid: number[]): number => {
+  const len = grid.length;
+  if (len === 9) return 3;
+  if (len === 16) return 4;
+  if (len === 25) return 5;
+  return Math.round(Math.sqrt(len)) || 4;
+};
+
+// Fallback constants for backwards compatibility
 export const GRID_SIZE = 4;
 export const TOTAL_TILES = 16;
 export const BLANK_TILE_ID = 15;
 
-export const createSolvedGrid = (): number[] => {
-  return Array.from({ length: TOTAL_TILES }, (_, i) => i);
+export const createSolvedGrid = (gridSize: number = 4): number[] => {
+  const total = gridSize * gridSize;
+  return Array.from({ length: total }, (_, i) => i);
 };
 
 export const isGridSolved = (grid: number[]): boolean => {
-  for (let i = 0; i < TOTAL_TILES; i++) {
+  for (let i = 0; i < grid.length; i++) {
     if (grid[i] !== i) return false;
   }
   return true;
 };
 
-// Check if a move is valid (adjacent to blank)
+// Check index of blank tile
 export const getBlankIndex = (grid: number[]): number => {
-  return grid.indexOf(BLANK_TILE_ID);
+  const blankId = grid.length - 1;
+  return grid.indexOf(blankId);
 };
 
-export const getAdjacentIndices = (pos: number): number[] => {
-  const row = Math.floor(pos / GRID_SIZE);
-  const col = pos % GRID_SIZE;
+export const getAdjacentIndices = (pos: number, gridSize: number): number[] => {
+  const row = Math.floor(pos / gridSize);
+  const col = pos % gridSize;
   const adj: number[] = [];
 
-  if (row > 0) adj.push(pos - GRID_SIZE); // Up
-  if (row < GRID_SIZE - 1) adj.push(pos + GRID_SIZE); // Down
+  if (row > 0) adj.push(pos - gridSize); // Up
+  if (row < gridSize - 1) adj.push(pos + gridSize); // Down
   if (col > 0) adj.push(pos - 1); // Left
-  if (col < GRID_SIZE - 1) adj.push(pos + 1); // Right
+  if (col < gridSize - 1) adj.push(pos + 1); // Right
 
   return adj;
 };
 
-// Scramble starting from solved state with random valid steps to guarantee solvability
-export const generateSolvableGrid = (difficultyLevel: number = 1): number[] => {
-  let grid = createSolvedGrid();
-  // Adjust scramble steps based on level difficulty (e.g. 30 moves for level 1 to 140 for master levels)
-  const steps = Math.min(140, 25 + Math.floor(difficultyLevel * 2.5));
-  let blankPos = TOTAL_TILES - 1;
+// Scramble starting from solved state with random valid steps to guarantee solvability for all grid sizes
+export const generateSolvableGrid = (levelId: number = 1): number[] => {
+  const gridSize = getGridSizeForLevel(levelId);
+  const totalTiles = gridSize * gridSize;
+  const blankTileId = totalTiles - 1;
+  const grid = createSolvedGrid(gridSize);
+
+  // Dynamic scramble steps based on grid size and level difficulty
+  const baseSteps = gridSize === 3 ? 35 : gridSize === 4 ? 65 : 110;
+  const levelBonus = Math.floor(((levelId - 1) % 15) * 2.5);
+  const steps = baseSteps + levelBonus;
+
+  let blankPos = totalTiles - 1;
   let lastPos = -1;
 
   for (let i = 0; i < steps; i++) {
-    const adj = getAdjacentIndices(blankPos).filter((p) => p !== lastPos);
+    const adj = getAdjacentIndices(blankPos, gridSize).filter((p) => p !== lastPos);
     const chosen = adj[Math.floor(Math.random() * adj.length)];
 
     // Swap blank with chosen
     grid[blankPos] = grid[chosen];
-    grid[chosen] = BLANK_TILE_ID;
+    grid[chosen] = blankTileId;
 
     lastPos = blankPos;
     blankPos = chosen;
@@ -58,27 +90,32 @@ export const generateSolvableGrid = (difficultyLevel: number = 1): number[] => {
 
   // Safety check if accidentally solved
   if (isGridSolved(grid)) {
-    const adj = getAdjacentIndices(blankPos);
+    const adj = getAdjacentIndices(blankPos, gridSize);
     const chosen = adj[0];
     grid[blankPos] = grid[chosen];
-    grid[chosen] = BLANK_TILE_ID;
+    grid[chosen] = blankTileId;
   }
 
   return grid;
 };
 
-// Move tile if adjacent, or handle row/col multi-tile shift
+// Move tile if adjacent, or handle row/col multi-tile shift dynamically for any grid size
 export const moveTile = (
   grid: number[],
   clickedIndex: number
 ): { newGrid: number[]; moved: boolean; movedIndices: number[] } => {
-  const blankIndex = getBlankIndex(grid);
-  if (clickedIndex === blankIndex) return { newGrid: grid, moved: false, movedIndices: [] };
+  const gridSize = getGridDimension(grid);
+  const blankTileId = grid.length - 1;
+  const blankIndex = grid.indexOf(blankTileId);
 
-  const clickedRow = Math.floor(clickedIndex / GRID_SIZE);
-  const clickedCol = clickedIndex % GRID_SIZE;
-  const blankRow = Math.floor(blankIndex / GRID_SIZE);
-  const blankCol = blankIndex % GRID_SIZE;
+  if (clickedIndex === blankIndex || clickedIndex < 0 || clickedIndex >= grid.length) {
+    return { newGrid: grid, moved: false, movedIndices: [] };
+  }
+
+  const clickedRow = Math.floor(clickedIndex / gridSize);
+  const clickedCol = clickedIndex % gridSize;
+  const blankRow = Math.floor(blankIndex / gridSize);
+  const blankCol = blankIndex % gridSize;
 
   // Single adjacent move
   const isAdjacent =
@@ -88,7 +125,7 @@ export const moveTile = (
   if (isAdjacent) {
     const newGrid = [...grid];
     newGrid[blankIndex] = grid[clickedIndex];
-    newGrid[clickedIndex] = BLANK_TILE_ID;
+    newGrid[clickedIndex] = blankTileId;
     return { newGrid, moved: true, movedIndices: [clickedIndex] };
   }
 
@@ -98,12 +135,12 @@ export const moveTile = (
     const movedIndices: number[] = [];
     const step = clickedCol < blankCol ? 1 : -1;
     for (let c = blankCol; c !== clickedCol; c -= step) {
-      const targetPos = clickedRow * GRID_SIZE + c;
-      const sourcePos = clickedRow * GRID_SIZE + (c - step);
+      const targetPos = clickedRow * gridSize + c;
+      const sourcePos = clickedRow * gridSize + (c - step);
       newGrid[targetPos] = newGrid[sourcePos];
       movedIndices.push(sourcePos);
     }
-    newGrid[clickedIndex] = BLANK_TILE_ID;
+    newGrid[clickedIndex] = blankTileId;
     return { newGrid, moved: true, movedIndices };
   }
 
@@ -113,40 +150,47 @@ export const moveTile = (
     const movedIndices: number[] = [];
     const step = clickedRow < blankRow ? 1 : -1;
     for (let r = blankRow; r !== clickedRow; r -= step) {
-      const targetPos = r * GRID_SIZE + clickedCol;
-      const sourcePos = (r - step) * GRID_SIZE + clickedCol;
+      const targetPos = r * gridSize + clickedCol;
+      const sourcePos = (r - step) * gridSize + clickedCol;
       newGrid[targetPos] = newGrid[sourcePos];
       movedIndices.push(sourcePos);
     }
-    newGrid[clickedIndex] = BLANK_TILE_ID;
+    newGrid[clickedIndex] = blankTileId;
     return { newGrid, moved: true, movedIndices };
   }
 
   return { newGrid: grid, moved: false, movedIndices: [] };
 };
 
-// Calculate Manhattan distance heuristic for a tile
-export const getManhattanDistance = (tileId: number, currentPos: number): number => {
-  if (tileId === BLANK_TILE_ID) return 0;
-  const targetRow = Math.floor(tileId / GRID_SIZE);
-  const targetCol = tileId % GRID_SIZE;
-  const currRow = Math.floor(currentPos / GRID_SIZE);
-  const currCol = currentPos % GRID_SIZE;
+// Calculate Manhattan distance heuristic for a tile dynamically based on grid size
+export const getManhattanDistance = (
+  tileId: number,
+  currentPos: number,
+  gridSize: number
+): number => {
+  const blankTileId = gridSize * gridSize - 1;
+  if (tileId === blankTileId) return 0;
+  const targetRow = Math.floor(tileId / gridSize);
+  const targetCol = tileId % gridSize;
+  const currRow = Math.floor(currentPos / gridSize);
+  const currCol = currentPos % gridSize;
   return Math.abs(targetRow - currRow) + Math.abs(targetCol - currCol);
 };
 
-// Calculate hint move
+// Calculate hint move dynamically for any grid size
 export const getHintTileIndex = (grid: number[]): number | null => {
-  const blankIndex = getBlankIndex(grid);
-  const adj = getAdjacentIndices(blankIndex);
+  const gridSize = getGridDimension(grid);
+  const blankTileId = grid.length - 1;
+  const blankIndex = grid.indexOf(blankTileId);
+  const adj = getAdjacentIndices(blankIndex, gridSize);
 
   let bestIndex: number | null = null;
   let bestScoreReduction = -999;
 
   adj.forEach((pos) => {
     const tileId = grid[pos];
-    const currentDist = getManhattanDistance(tileId, pos);
-    const newDist = getManhattanDistance(tileId, blankIndex);
+    const currentDist = getManhattanDistance(tileId, pos, gridSize);
+    const newDist = getManhattanDistance(tileId, blankIndex, gridSize);
     const scoreReduction = currentDist - newDist; // Positive if moving closer to target
 
     if (scoreReduction > bestScoreReduction) {
@@ -155,15 +199,18 @@ export const getHintTileIndex = (grid: number[]): number | null => {
     }
   });
 
-  return bestIndex !== null ? bestIndex : adj[0];
+  return bestIndex !== null ? bestIndex : adj[0] ?? null;
 };
 
-// Auto Align: intelligently performs 2-3 optimal steps toward solved configuration
-export const performAutoAlign = (grid: number[]): { newGrid: number[]; alignedCount: number } => {
+// Auto Align: intelligently performs optimal steps toward solved configuration
+export const performAutoAlign = (
+  grid: number[]
+): { newGrid: number[]; alignedCount: number } => {
   let workingGrid = [...grid];
   let movesDone = 0;
+  const maxSteps = 4;
 
-  for (let step = 0; step < 4; step++) {
+  for (let step = 0; step < maxSteps; step++) {
     if (isGridSolved(workingGrid)) break;
     const hintPos = getHintTileIndex(workingGrid);
     if (hintPos !== null) {

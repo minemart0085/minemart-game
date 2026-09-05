@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LevelConfig, LevelRecord } from '../types';
-import { GRID_SIZE, BLANK_TILE_ID, isGridSolved } from '../services/puzzleEngine';
-import { Clock, Target, Trophy, Sparkles, Eye } from 'lucide-react';
+import { getGridDimension, isGridSolved } from '../services/puzzleEngine';
+import { Clock, Target, Trophy, Sparkles, Eye, Grid3X3 } from 'lucide-react';
 
 interface PuzzleBoardProps {
   level: LevelConfig;
@@ -29,6 +29,11 @@ export const PuzzleBoard: React.FC<PuzzleBoardProps> = ({
   movesCount,
   isPaused,
 }) => {
+  const gridSize = getGridDimension(grid);
+  const totalTiles = grid.length;
+  const blankTileId = totalTiles - 1;
+  const imageTilesCount = totalTiles - 1;
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -42,9 +47,17 @@ export const PuzzleBoard: React.FC<PuzzleBoardProps> = ({
 
   const isSolved = isGridSolved(grid);
 
+  // Dynamic grid column and gap classes based on grid size
+  const gridLayoutClass =
+    gridSize === 3
+      ? 'grid-cols-3 grid-rows-3 gap-2'
+      : gridSize === 5
+      ? 'grid-cols-5 grid-rows-5 gap-1'
+      : 'grid-cols-4 grid-rows-4 gap-1.5';
+
   return (
     <div className="w-full max-w-md mx-auto flex flex-col items-center gap-3">
-      {/* 1. Level Information Panel (Time Goal, Moves Goal, Best Record) */}
+      {/* 1. Level Information Panel (Time Goal, Moves Goal, Best Record + Grid Size) */}
       <div className="w-full bg-slate-900/90 border border-slate-800 rounded-2xl p-3 shadow-md">
         <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800/80">
           <div className="flex items-center gap-2">
@@ -53,9 +66,15 @@ export const PuzzleBoard: React.FC<PuzzleBoardProps> = ({
               {level.title}
             </h2>
           </div>
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700">
-            {level.difficulty}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+              <Grid3X3 className="w-3 h-3" />
+              <span>{gridSize}×{gridSize} ({imageTilesCount} Tiles)</span>
+            </span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700">
+              {level.difficulty}
+            </span>
+          </div>
         </div>
 
         {/* The 3 Core Required Statistics: Time Goal, Moves Goal, Best Record + Live Stats */}
@@ -104,7 +123,7 @@ export const PuzzleBoard: React.FC<PuzzleBoardProps> = ({
         </div>
       </div>
 
-      {/* 2. Main 4x4 Puzzle Gameplay Area */}
+      {/* 2. Main Dynamic Puzzle Gameplay Area (3x3, 4x4, or 5x5) */}
       <div className="relative w-full aspect-square max-w-[370px] sm:max-w-[390px] p-2 sm:p-2.5 bg-slate-900/95 border-2 border-amber-500/30 rounded-3xl shadow-2xl shadow-black/60 flex items-center justify-center">
         {/* Full Image Preview Overlay if activated */}
         <AnimatePresence>
@@ -122,18 +141,18 @@ export const PuzzleBoard: React.FC<PuzzleBoardProps> = ({
               />
               <div className="absolute top-2 left-2 px-2.5 py-1 bg-black/70 backdrop-blur-md rounded-lg text-xs font-game text-cyan-300 flex items-center gap-1.5 border border-cyan-500/30">
                 <Eye className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Original Solution Preview</span>
+                <span>Original Solution Preview ({gridSize}×{gridSize})</span>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* 4x4 Tiles Grid */}
-        <div className="grid grid-cols-4 grid-rows-4 gap-1.5 w-full h-full">
+        {/* Dynamic Tiles Grid */}
+        <div className={`grid ${gridLayoutClass} w-full h-full`}>
           {grid.map((tileId, currentIndex) => {
-            const isEmpty = tileId === BLANK_TILE_ID;
-            const originalRow = Math.floor(tileId / GRID_SIZE);
-            const originalCol = tileId % GRID_SIZE;
+            const isEmpty = tileId === blankTileId;
+            const originalRow = Math.floor(tileId / gridSize);
+            const originalCol = tileId % gridSize;
             const isHint = hintTileIndex === currentIndex;
             const isCorrectPosition = tileId === currentIndex;
 
@@ -141,17 +160,18 @@ export const PuzzleBoard: React.FC<PuzzleBoardProps> = ({
               return (
                 <div
                   key="blank"
-                  className="w-full h-full rounded-xl bg-slate-950/60 border border-dashed border-slate-700/50 flex items-center justify-center shadow-inner"
+                  className={`w-full h-full ${
+                    gridSize === 5 ? 'rounded-lg' : 'rounded-xl'
+                  } bg-slate-950/60 border border-dashed border-slate-700/50 flex items-center justify-center shadow-inner`}
                 >
-                  <div className="w-3 h-3 rounded-full bg-slate-800/40" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-slate-800/40" />
                 </div>
               );
             }
 
-            // Calculate background position percentages for 4x4 slice
-            // 4 cols: 0%, 33.333%, 66.666%, 100%
-            const bgX = (originalCol / (GRID_SIZE - 1)) * 100;
-            const bgY = (originalRow / (GRID_SIZE - 1)) * 100;
+            // Calculate background position percentages dynamically for gridSize slices
+            const bgX = (originalCol / (gridSize - 1)) * 100;
+            const bgY = (originalRow / (gridSize - 1)) * 100;
 
             return (
               <motion.button
@@ -160,7 +180,9 @@ export const PuzzleBoard: React.FC<PuzzleBoardProps> = ({
                 transition={{ type: 'spring', stiffness: 350, damping: 28 }}
                 onClick={() => onTileClick(currentIndex)}
                 disabled={isPaused || isSolved}
-                className={`relative w-full h-full rounded-xl overflow-hidden shadow-md cursor-pointer select-none transition-transform active:scale-95 border-2 ${
+                className={`relative w-full h-full ${
+                  gridSize === 5 ? 'rounded-lg' : 'rounded-xl'
+                } overflow-hidden shadow-md cursor-pointer select-none transition-transform active:scale-95 border-2 ${
                   isHint
                     ? 'border-yellow-400 ring-4 ring-yellow-400/50 animate-pulse z-20'
                     : isCorrectPosition
@@ -169,7 +191,7 @@ export const PuzzleBoard: React.FC<PuzzleBoardProps> = ({
                 }`}
                 style={{
                   backgroundImage: `url(${level.imageUrl})`,
-                  backgroundSize: '400% 400%',
+                  backgroundSize: `${gridSize * 100}% ${gridSize * 100}%`,
                   backgroundPosition: `${bgX}% ${bgY}%`,
                   backgroundRepeat: 'no-repeat',
                 }}
@@ -179,7 +201,15 @@ export const PuzzleBoard: React.FC<PuzzleBoardProps> = ({
 
                 {/* Number Hint or Permanent Indicator Badge */}
                 {showNumbers && (
-                  <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded-md bg-slate-950/80 backdrop-blur-sm border border-amber-400/40 text-amber-300 font-game font-bold text-[11px] leading-none shadow">
+                  <div
+                    className={`absolute top-0.5 left-0.5 sm:top-1 sm:left-1 ${
+                      gridSize === 5
+                        ? 'px-1 py-0.2 text-[9px] sm:text-[10px]'
+                        : gridSize === 3
+                        ? 'px-2 py-0.5 text-xs sm:text-sm'
+                        : 'px-1.5 py-0.5 text-[10px] sm:text-[11px]'
+                    } rounded-md bg-slate-950/85 backdrop-blur-sm border border-amber-400/40 text-amber-300 font-game font-bold leading-none shadow`}
+                  >
                     {tileId + 1}
                   </div>
                 )}
@@ -187,7 +217,7 @@ export const PuzzleBoard: React.FC<PuzzleBoardProps> = ({
                 {/* Hint Sparkle indicator */}
                 {isHint && (
                   <div className="absolute bottom-1 right-1 p-0.5 rounded-full bg-yellow-400 text-slate-950">
-                    <Sparkles className="w-3 h-3 fill-current" />
+                    <Sparkles className={`${gridSize === 5 ? 'w-2.5 h-2.5' : 'w-3 h-3'} fill-current`} />
                   </div>
                 )}
 

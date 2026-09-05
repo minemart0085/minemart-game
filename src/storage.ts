@@ -1,5 +1,5 @@
-import { UserProfile, LevelRecord, Achievement } from '../types';
-import { INITIAL_ACHIEVEMENTS } from '../data/achievementsData';
+import { UserProfile, LevelRecord, Achievement } from './types';
+import { INITIAL_ACHIEVEMENTS } from './data/achievementsData';
 
 const STORAGE_KEY = 'minemart_photo_puzzle_user_v1';
 const ACCOUNTS_DB_KEY = 'minemart_photo_puzzle_accounts_v1';

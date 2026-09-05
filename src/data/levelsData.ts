@@ -59,30 +59,41 @@ export const GAME_LEVELS: LevelConfig[] = Array.from({ length: 50 }, (_, i) => {
   const photo = PHOTO_COLLECTION[i % PHOTO_COLLECTION.length];
   const isMilestone = levelNum === 10 || levelNum === 25 || levelNum === 50;
 
-  // Progressive goals
-  let timeGoal = 120;
-  let movesGoal = 80;
+  // Progressive goals balanced for 3x3 (Lv 1-15), 4x4 (Lv 16-30), and 5x5 (Lv 31-50)
+  let timeGoal = 90;
+  let movesGoal = 50;
   let difficulty: LevelConfig['difficulty'] = 'Easy';
+  let tileCountText = '8 photo tiles (3×3)';
 
-  if (levelNum <= 10) {
-    timeGoal = 120 - Math.floor(levelNum * 3); // 120 -> 90s
-    movesGoal = 85 - Math.floor(levelNum * 2); // 85 -> 65
-    difficulty = 'Easy';
-  } else if (levelNum <= 25) {
-    timeGoal = 95 - Math.floor((levelNum - 10) * 1.5); // 95 -> 72s
-    movesGoal = 68 - Math.floor((levelNum - 10) * 1.2); // 68 -> 50
-    difficulty = levelNum === 25 ? 'Challenging' : 'Normal';
+  if (levelNum <= 15) {
+    // 3x3 grid (8 image tiles + 1 blank)
+    tileCountText = '8 photo tiles (3×3)';
+    timeGoal = 90 - Math.floor((levelNum - 1) * 2); // 90s -> 62s
+    movesGoal = 60 - Math.floor((levelNum - 1) * 1.6); // 60 -> 38
+    difficulty = levelNum > 10 ? 'Normal' : 'Easy';
+  } else if (levelNum <= 30) {
+    // 4x4 grid (15 image tiles + 1 blank)
+    tileCountText = '15 photo tiles (4×4)';
+    timeGoal = 120 - Math.floor((levelNum - 16) * 2.5); // 120s -> 85s
+    movesGoal = 85 - Math.floor((levelNum - 16) * 1.8); // 85 -> 60
+    difficulty = levelNum === 25 || levelNum === 30 ? 'Challenging' : 'Normal';
   } else if (levelNum <= 40) {
-    timeGoal = 75 - Math.floor((levelNum - 25) * 1); // 75 -> 60s
-    movesGoal = 52 - Math.floor((levelNum - 25) * 0.8); // 52 -> 40
+    // 5x5 grid (24 image tiles + 1 blank)
+    tileCountText = '24 photo tiles (5×5)';
+    timeGoal = 180 - Math.floor((levelNum - 31) * 4); // 180s -> 144s
+    movesGoal = 150 - Math.floor((levelNum - 31) * 3); // 150 -> 123
     difficulty = 'Challenging';
   } else if (levelNum < 50) {
-    timeGoal = 60 - Math.floor((levelNum - 40) * 1); // 60 -> 50s
-    movesGoal = 42 - Math.floor((levelNum - 40) * 0.6); // 42 -> 36
+    // 5x5 grid (24 image tiles + 1 blank)
+    tileCountText = '24 photo tiles (5×5)';
+    timeGoal = 140 - Math.floor((levelNum - 41) * 3.5); // 140s -> 112s
+    movesGoal = 120 - Math.floor((levelNum - 41) * 3); // 120 -> 96
     difficulty = 'Hard';
   } else {
-    timeGoal = 45;
-    movesGoal = 32;
+    // Level 50 Grand Champion 5x5
+    tileCountText = '24 photo tiles (5×5)';
+    timeGoal = 100;
+    movesGoal = 80;
     difficulty = 'Master';
   }
 
@@ -100,17 +111,20 @@ export const GAME_LEVELS: LevelConfig[] = Array.from({ length: 50 }, (_, i) => {
     milestoneBonus = 1000;
   }
 
+  const finalTimeGoal = Math.max(30, Math.round(timeGoal));
+  const finalMovesGoal = Math.max(25, Math.round(movesGoal));
+
   return {
     id: levelNum,
     title: photo.title,
     category: photo.category,
     imageUrl: photo.url,
-    timeGoal: Math.max(30, Math.round(timeGoal)),
-    movesGoal: Math.max(25, Math.round(movesGoal)),
+    timeGoal: finalTimeGoal,
+    movesGoal: finalMovesGoal,
     difficulty,
     isMilestone,
     milestoneTitle,
     milestoneBonus,
-    description: `Arrange all 15 photo tiles within ${timeGoal}s and ${movesGoal} moves for a 3-star victory!`
+    description: `Arrange all ${tileCountText} within ${finalTimeGoal}s and ${finalMovesGoal} moves for a 3-star victory!`
   };
 });

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { UserProfile } from '../types';
 import { sound } from '../services/sound';
-import { StorageService } from '../services/storage';
+import { StorageService } from '../storage';
 import {
   Volume2,
   VolumeX,
@@ -299,12 +299,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="flex-1 overflow-y-auto flex flex-col gap-3 text-xs text-slate-300 leading-relaxed pr-1">
             <div className="p-3 rounded-2xl bg-slate-800/80 border border-slate-700/60">
               <h4 className="font-game font-bold text-amber-300 text-sm mb-1">
-                🧩 4x4 Photo Sliding Puzzle
+                🧩 Level-Based Progressive Grids
               </h4>
-              <p>
-                The game board consists of 15 photo tiles and 1 empty space. Tap or swipe any tile
-                adjacent to the empty space to slide it. Reconstruct the original photo to complete
-                the level!
+              <p className="mb-2">
+                The puzzle grid dynamically scales as you advance through the world map:
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-[11px] text-slate-400">
+                <li>
+                  <strong className="text-amber-300">Levels 1–15:</strong> 3 × 3 Grid (8 photo tiles + 1 blank)
+                </li>
+                <li>
+                  <strong className="text-cyan-300">Levels 16–30:</strong> 4 × 4 Grid (15 photo tiles + 1 blank)
+                </li>
+                <li>
+                  <strong className="text-purple-300">Levels 31–50:</strong> 5 × 5 Grid (24 photo tiles + 1 blank)
+                </li>
+              </ul>
+              <p className="mt-2 text-[11px] text-slate-400">
+                Tap or slide any tile into the empty space to reconstruct the HD photo!
               </p>
             </div>
 
